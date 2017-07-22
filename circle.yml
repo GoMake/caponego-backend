@@ -3,6 +3,9 @@ machine:
     version: 6.11.0
   post:
     - npm install -g serverless
+test:
+  override:
+    - serverless metrics
 deployment:
   production:
     branch: master
