@@ -1,12 +1,21 @@
 'use strict';
 const rp = require('request-promise');
 
+const firebase = require('firebase');
+
 const TOKEN_URI='https://api-sandbox.capitalone.com/oauth2/token/';
 const ACCOUNTS_URI='https://api-sandbox.capitalone.com/rewards/accounts/';
 const ACCOUNT_DETAILS_URI='https://api-sandbox.capitalone.com/rewards/accounts/';
 const CLIENT_ID='70048ab0247b478baef288dae9f36f98';
 const CLIENT_SECRET='cf6e918da6dce17cd4dcf37c8801b3e1';
 const REDIRECT_URI='https://huvcyixh0b.execute-api.us-east-1.amazonaws.com/prod/caponego-prod-getCapOneRewards/';
+
+const config = {
+  apiKey: 'AIzaSyDAdskDcznIA7L2CjLCyr6YRTdqQrWWRSs',
+  authDomain: 'caponego-aa116.firebaseapp.com',
+  databaseURL: 'https://caponego-aa116.firebaseio.com/',
+  storageBucket: 'gs://caponego-aa116.appspot.com',
+};
 
 function getAccessToken(authCode) {
   const options = {
@@ -87,21 +96,40 @@ function getAccountDetails() {
 
 function getTotalRedemptionOpportunities() {
   return (accountDetails) => {
-    const opportunities = {};
+    const opportunities = accountDetails['redemptionOpportunities'];
+    const totalPoints = opportunities.reduce((total, opp) => {
+      const points = (opp.category !== 'Travel') ? opp.redemptionAmount : 0;
+      return total + points;
+    }, 0);
+    return totalPoints;
   };
 }
-module.exports.getCapOneRewards = (event, context, callback) => {
 
-    const done = (err, res) => callback(null, {
-        statusCode: err ? '400' : '200',
+function writeToFirebase() {
+  return (totalPoints) => {
+    return '';
+    //return firebase.database().ref('caponego/userInfo/rewardPoints').set(totalPoints);
+  };
+}
+
+module.exports.getCapOneRewards = (event, context, callback) => {
+    const done = (err, res) => {
+      console.log('RESULTS: ', typeof res);
+      return callback(null, {
+        statusCode: err ? '400' : '302',
         body: err ? JSON.stringify({message: err.message}) : JSON.stringify(res),
         headers: {
             'Content-Type': 'application/json',
+            'Location': 'CapOne-GO://'
         },
-    });
+      });
+    };
+
+    //firebase.initializeApp(config);
+
     switch (event.httpMethod) {
         case 'GET':
-            const queryParams = event.queryStringParameters
+            const queryParams = event.queryStringParameters;
             if(queryParams) {
               const authCode = (queryParams['code'])? queryParams['code'] : '';
               getAccessToken(authCode)
@@ -109,7 +137,11 @@ module.exports.getCapOneRewards = (event, context, callback) => {
                 .then(getAccounts())
                 .then(parseAccounts())
                 .then(getAccountDetails())
-                .then((details)=> done(null, details));
+                .then(getTotalRedemptionOpportunities())
+                .then(writeToFirebase())
+                .then(()=> {
+                  done(null, { success: 'OK' });
+                });
             }
             break;
         default:
