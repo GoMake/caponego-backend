@@ -1,0 +1,24 @@
+{
+  "name": "caponego-backend",
+  "version": "1.0.0",
+  "description": "caponego game",
+  "main": "handler.js",
+  "dependencies": {
+    "request": "^2.81.0",
+    "request-promise": "^4.2.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "serverless metrics"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GoMake/caponego-backend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GoMake/caponego-backend/issues"
+  },
+  "homepage": "https://github.com/GoMake/caponego-backend#readme"
+}
