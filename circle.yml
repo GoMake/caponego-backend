@@ -1,0 +1,10 @@
+machine:
+  node:
+    version: 6.11.0
+  post:
+    - npm install -g serverless
+deployment:
+  production:
+    branch: master
+    commands:
+      - serverless deploy
