@@ -6,8 +6,8 @@ const firebase = require('firebase');
 const TOKEN_URI='https://api-sandbox.capitalone.com/oauth2/token/';
 const ACCOUNTS_URI='https://api-sandbox.capitalone.com/rewards/accounts/';
 const ACCOUNT_DETAILS_URI='https://api-sandbox.capitalone.com/rewards/accounts/';
-const CLIENT_ID='70048ab0247b478baef288dae9f36f98';
-const CLIENT_SECRET='cf6e918da6dce17cd4dcf37c8801b3e1';
+const CLIENT_ID = 'ef2b1d96c04342ac80c65acedf273298';
+const CLIENT_SECRET = 'a450ed5ea04b2bdcec1441d20ee78341';
 const REDIRECT_URI='https://huvcyixh0b.execute-api.us-east-1.amazonaws.com/prod/caponego-prod-getCapOneRewards/';
 
 const config = {
@@ -16,6 +16,8 @@ const config = {
   databaseURL: 'https://caponego-aa116.firebaseio.com/',
   storageBucket: 'gs://caponego-aa116.appspot.com',
 };
+
+var app;
 
 function getAccessToken(authCode) {
   const options = {
@@ -105,18 +107,36 @@ function getTotalRedemptionOpportunities() {
   };
 }
 
+function initializeFirebaseApp() {
+  return (totalPoints) => {
+    app = firebase.initializeApp(config);
+    return Promise.resolve(totalPoints);
+  };
+}
+
 function writeToFirebase() {
   return (totalPoints) => {
-    return '';
-    //return firebase.database().ref('caponego/userInfo/rewardPoints').set(totalPoints);
+    return firebase.database().ref('caponego/userInfo/rewardPoints').set(totalPoints);
   };
+}
+
+function closeFirebaseDBConn() {
+  return () => {
+    firebase.database().goOffline();
+    return Promise.resolve();
+  }
+}
+
+function deleteFirebaseApp() {
+  return () => {
+    return app.delete();
+  }
 }
 
 module.exports.getCapOneRewards = (event, context, callback) => {
     const done = (err, res) => {
-      console.log('RESULTS: ', typeof res);
       return callback(null, {
-        statusCode: err ? '400' : '302',
+        statusCode: err ? '400' : '200',
         body: err ? JSON.stringify({message: err.message}) : JSON.stringify(res),
         headers: {
             'Content-Type': 'application/json',
@@ -125,7 +145,6 @@ module.exports.getCapOneRewards = (event, context, callback) => {
       });
     };
 
-    //firebase.initializeApp(config);
 
     switch (event.httpMethod) {
         case 'GET':
@@ -138,10 +157,15 @@ module.exports.getCapOneRewards = (event, context, callback) => {
                 .then(parseAccounts())
                 .then(getAccountDetails())
                 .then(getTotalRedemptionOpportunities())
+                .then(initializeFirebaseApp())
                 .then(writeToFirebase())
+                .then(closeFirebaseDBConn())
+                .then(deleteFirebaseApp())
                 .then(()=> {
                   done(null, { success: 'OK' });
-                });
+                }).catch((err)=>{
+                  done(err);
+                })
             }
             break;
         default:
